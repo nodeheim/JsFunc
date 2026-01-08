@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 시리얼 원판 인터랙티브</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            overflow: hidden;
+            color: white;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 100;
+        }
+
+        #controls h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        input[type="range"] {
+            width: 150px;
+            margin-left: 10px;
+        }
+
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            z-index: 1000;
+        }
+
+        @media (max-width: 768px) {
+            #controls {
+                font-size: 0.85rem;
+                padding: 15px;
+                max-width: 90vw;
+            }
+
+            button {
+                padding: 8px 15px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div class="loading">로딩 중...</div>
+
+        <div id="controls">
+            <h2>🥣 시리얼 원판 제어</h2>
+            <div class="control-group">
+                <button id="addCereals">시리얼 추가</button>
+                <button id="clearCereals">모두 제거</button>
+            </div>
+            <div class="control-group">
+                <button id="toggleWiper">와이퍼 시작/정지</button>
+                <button id="toggleRotation">원판 회전</button>
+            </div>
+            <div class="control-group">
+                <label>
+                    와이퍼 속도:
+                    <input type="range" id="wiperSpeed" min="0.5" max="5" step="0.1" value="2">
+                </label>
+            </div>
+            <div class="control-group">
+                <label>
+                    원판 속도:
+                    <input type="range" id="discSpeed" min="0" max="3" step="0.1" value="0.5">
+                </label>
+            </div>
+        </div>
+
+        <div id="info">
+            마우스로 드래그하여 회전 | 스크롤로 줌
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // 장면 설정
+        let scene, camera, renderer;
+        let disc, wiper, cereals = [];
+        let wiperAngle = 0;
+        let wiperActive = true;
+        let discRotating = true;
+        let wiperSpeed = 2;
+        let discSpeed = 0.5;
+        let mouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let cameraAngle = { theta: Math.PI / 4, phi: Math.PI / 4 };
+        let cameraDistance = 15;
+
+        // 시리얼 타입 정의 (색상과 모양)
+        const cerealTypes = [
+            { color: 0xFF6B6B, shape: 'sphere', name: '딸기볼' },
+            { color: 0xFFD93D, shape: 'ring', name: '콘플레이크' },
+            { color: 0x6BCB77, shape: 'sphere', name: '초코볼' },
+            { color: 0x4D96FF, shape: 'box', name: '블루베리' },
+            { color: 0xFF8C42, shape: 'sphere', name: '오렌지' },
+            { color: 0xA084DC, shape: 'ring', name: '그레이프' },
+            { color: 0xFFB7B7, shape: 'box', name: '마시멜로' },
+            { color: 0xFFC93C, shape: 'sphere', name: '허니넛' }
+        ];
+
+        function init() {
+            // 씬 생성
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            scene.fog = new THREE.Fog(0x1a1a2e, 10, 50);
+
+            // 카메라 설정
+            camera = new THREE.PerspectiveCamera(
+                60,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            updateCameraPosition();
+
+            // 렌더러 설정
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // 조명
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            const pointLight1 = new THREE.PointLight(0xff00ff, 0.5, 20);
+            pointLight1.position.set(-5, 5, 0);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0x00ffff, 0.5, 20);
+            pointLight2.position.set(5, 5, 0);
+            scene.add(pointLight2);
+
+            // 원판 생성
+            createDisc();
+
+            // 와이퍼 생성
+            createWiper();
+
+            // 초기 시리얼 추가
+            addCereals(50);
+
+            // 이벤트 리스너
+            setupEventListeners();
+
+            // 로딩 완료
+            document.querySelector('.loading').style.display = 'none';
+
+            // 애니메이션 시작
+            animate();
+        }
+
+        function createDisc() {
+            const discGroup = new THREE.Group();
+
+            // 메인 원판
+            const discGeometry = new THREE.CylinderGeometry(5, 5, 0.3, 64);
+            const discMaterial = new THREE.MeshPhongMaterial({
+                color: 0x2d3561,
+                emissive: 0x1a1f3a,
+                shininess: 100
+            });
+            const discMesh = new THREE.Mesh(discGeometry, discMaterial);
+            discMesh.receiveShadow = true;
+            discMesh.castShadow = true;
+            discGroup.add(discMesh);
+
+            // 원판 테두리
+            const edgeGeometry = new THREE.TorusGeometry(5, 0.2, 16, 64);
+            const edgeMaterial = new THREE.MeshPhongMaterial({
+                color: 0x667eea,
+                emissive: 0x4444aa,
+                shininess: 100
+            });
+            const edge = new THREE.Mesh(edgeGeometry, edgeMaterial);
+            edge.rotation.x = Math.PI / 2;
+            discGroup.add(edge);
+
+            // 원판 무늬
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const lineGeometry = new THREE.BoxGeometry(0.1, 0.4, 4);
+                const lineMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3d4675,
+                    emissive: 0x2a2f4a
+                });
+                const line = new THREE.Mesh(lineGeometry, lineMaterial);
+                line.position.set(
+                    Math.cos(angle) * 2,
+                    0.2,
+                    Math.sin(angle) * 2
+                );
+                line.rotation.y = angle;
+                discGroup.add(line);
+            }
+
+            disc = discGroup;
+            scene.add(disc);
+        }
+
+        function createWiper() {
+            const wiperGroup = new THREE.Group();
+
+            // 와이퍼 기둥
+            const poleGeometry = new THREE.CylinderGeometry(0.2, 0.2, 2, 16);
+            const poleMaterial = new THREE.MeshPhongMaterial({
+                color: 0xff6b6b,
+                emissive: 0xaa3333,
+                shininess: 100
+            });
+            const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+            pole.position.y = 1;
+            pole.castShadow = true;
+            wiperGroup.add(pole);
+
+            // 와이퍼 날 (빗자루 같은 형태)
+            const bladeGeometry = new THREE.BoxGeometry(0.3, 1.5, 4);
+            const bladeMaterial = new THREE.MeshPhongMaterial({
+                color: 0xffd93d,
+                emissive: 0xaa8800,
+                transparent: true,
+                opacity: 0.8
+            });
+            const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+            blade.position.set(0, 0.5, 2);
+            blade.castShadow = true;
+            wiperGroup.add(blade);
+
+            // 와이퍼 끝 장식
+            const tipGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const tipMaterial = new THREE.MeshPhongMaterial({
+                color: 0xff00ff,
+                emissive: 0xaa00aa,
+                shininess: 100
+            });
+            const tip = new THREE.Mesh(tipGeometry, tipMaterial);
+            tip.position.set(0, 0.5, 4);
+            wiperGroup.add(tip);
+
+            wiper = wiperGroup;
+            wiper.position.y = 0.15;
+            scene.add(wiper);
+        }
+
+        function createCereal(type) {
+            let geometry;
+
+            switch(type.shape) {
+                case 'sphere':
+                    geometry = new THREE.SphereGeometry(0.15, 16, 16);
+                    break;
+                case 'ring':
+                    geometry = new THREE.TorusGeometry(0.12, 0.05, 8, 16);
+                    break;
+                case 'box':
+                    geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+                    break;
+                default:
+                    geometry = new THREE.SphereGeometry(0.15, 16, 16);
+            }
+
+            const material = new THREE.MeshPhongMaterial({
+                color: type.color,
+                emissive: type.color,
+                emissiveIntensity: 0.2,
+                shininess: 100
+            });
+
+            const cereal = new THREE.Mesh(geometry, material);
+            cereal.castShadow = true;
+            cereal.receiveShadow = true;
+
+            // 랜덤 시작 위치 (원판 위)
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 3;
+            cereal.position.set(
+                Math.cos(angle) * radius,
+                5 + Math.random() * 5,
+                Math.sin(angle) * radius
+            );
+
+            // 물리 속성
+            cereal.userData = {
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.1,
+                    -0.1,
+                    (Math.random() - 0.5) * 0.1
+                ),
+                rotation: new THREE.Vector3(
+                    Math.random() * 0.1,
+                    Math.random() * 0.1,
+                    Math.random() * 0.1
+                ),
+                onDisc: false,
+                type: type.name
+            };
+
+            return cereal;
+        }
+
+        function addCereals(count = 20) {
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const type = cerealTypes[Math.floor(Math.random() * cerealTypes.length)];
+                    const cereal = createCereal(type);
+                    scene.add(cereal);
+                    cereals.push(cereal);
+                }, i * 50);
+            }
+        }
+
+        function updateCereals() {
+            cereals.forEach((cereal, index) => {
+                if (!cereal.userData.onDisc) {
+                    // 낙하
+                    cereal.userData.velocity.y -= 0.005; // 중력
+                    cereal.position.add(cereal.userData.velocity);
+
+                    // 회전
+                    cereal.rotation.x += cereal.userData.rotation.x;
+                    cereal.rotation.y += cereal.userData.rotation.y;
+                    cereal.rotation.z += cereal.userData.rotation.z;
+
+                    // 원판에 닿았는지 체크
+                    const distFromCenter = Math.sqrt(
+                        cereal.position.x * cereal.position.x +
+                        cereal.position.z * cereal.position.z
+                    );
+
+                    if (cereal.position.y <= 0.3 && distFromCenter <= 5) {
+                        cereal.userData.onDisc = true;
+                        cereal.position.y = 0.3;
+                        cereal.userData.velocity.y = 0;
+                        cereal.userData.velocity.multiplyScalar(0.3); // 마찰
+                    }
+
+                    // 원판 밖으로 떨어졌으면 제거
+                    if (cereal.position.y < -5) {
+                        scene.remove(cereal);
+                        cereals.splice(index, 1);
+                    }
+                } else {
+                    // 원판 위에서 움직임
+                    cereal.position.add(cereal.userData.velocity);
+                    cereal.userData.velocity.multiplyScalar(0.98); // 마찰
+
+                    // 원판 회전과 함께 움직임
+                    if (discRotating) {
+                        const angle = discSpeed * 0.01;
+                        const cos = Math.cos(angle);
+                        const sin = Math.sin(angle);
+                        const x = cereal.position.x;
+                        const z = cereal.position.z;
+                        cereal.position.x = x * cos - z * sin;
+                        cereal.position.z = x * sin + z * cos;
+                    }
+
+                    // 와이퍼와 충돌 체크
+                    if (wiperActive) {
+                        const wiperX = Math.cos(wiperAngle) * 2;
+                        const wiperZ = Math.sin(wiperAngle) * 2;
+                        const dist = Math.sqrt(
+                            Math.pow(cereal.position.x - wiperX, 2) +
+                            Math.pow(cereal.position.z - wiperZ, 2)
+                        );
+
+                        if (dist < 0.5) {
+                            // 와이퍼에 밀려남
+                            const pushAngle = Math.atan2(
+                                cereal.position.z - wiperZ,
+                                cereal.position.x - wiperX
+                            );
+                            cereal.userData.velocity.x += Math.cos(pushAngle) * 0.1;
+                            cereal.userData.velocity.z += Math.sin(pushAngle) * 0.1;
+                        }
+                    }
+
+                    // 원판 경계 체크
+                    const distFromCenter = Math.sqrt(
+                        cereal.position.x * cereal.position.x +
+                        cereal.position.z * cereal.position.z
+                    );
+
+                    if (distFromCenter > 4.8) {
+                        // 경계에서 튕김
+                        const angle = Math.atan2(cereal.position.z, cereal.position.x);
+                        cereal.position.x = Math.cos(angle) * 4.8;
+                        cereal.position.z = Math.sin(angle) * 4.8;
+                        cereal.userData.velocity.x *= -0.5;
+                        cereal.userData.velocity.z *= -0.5;
+                    }
+                }
+            });
+        }
+
+        function updateWiper() {
+            if (wiperActive) {
+                wiperAngle += wiperSpeed * 0.01;
+                wiper.rotation.y = wiperAngle;
+            }
+        }
+
+        function updateDisc() {
+            if (discRotating) {
+                disc.rotation.y += discSpeed * 0.01;
+            }
+        }
+
+        function updateCameraPosition() {
+            camera.position.x = cameraDistance * Math.sin(cameraAngle.theta) * Math.cos(cameraAngle.phi);
+            camera.position.y = cameraDistance * Math.sin(cameraAngle.phi);
+            camera.position.z = cameraDistance * Math.cos(cameraAngle.theta) * Math.cos(cameraAngle.phi);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function setupEventListeners() {
+            // 버튼 이벤트
+            document.getElementById('addCereals').addEventListener('click', () => {
+                addCereals(20);
+            });
+
+            document.getElementById('clearCereals').addEventListener('click', () => {
+                cereals.forEach(cereal => scene.remove(cereal));
+                cereals = [];
+            });
+
+            document.getElementById('toggleWiper').addEventListener('click', () => {
+                wiperActive = !wiperActive;
+            });
+
+            document.getElementById('toggleRotation').addEventListener('click', () => {
+                discRotating = !discRotating;
+            });
+
+            document.getElementById('wiperSpeed').addEventListener('input', (e) => {
+                wiperSpeed = parseFloat(e.target.value);
+            });
+
+            document.getElementById('discSpeed').addEventListener('input', (e) => {
+                discSpeed = parseFloat(e.target.value);
+            });
+
+            // 마우스 컨트롤
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                mouseDown = true;
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (mouseDown) {
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+
+                    cameraAngle.theta += deltaX * 0.01;
+                    cameraAngle.phi += deltaY * 0.01;
+
+                    // 카메라 각도 제한
+                    cameraAngle.phi = Math.max(0.1, Math.min(Math.PI / 2, cameraAngle.phi));
+
+                    updateCameraPosition();
+
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                }
+            });
+
+            renderer.domElement.addEventListener('mouseup', () => {
+                mouseDown = false;
+            });
+
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                cameraDistance += e.deltaY * 0.01;
+                cameraDistance = Math.max(8, Math.min(30, cameraDistance));
+                updateCameraPosition();
+            });
+
+            // 터치 이벤트 (모바일)
+            let touchStartX, touchStartY;
+
+            renderer.domElement.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            });
+
+            renderer.domElement.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const deltaX = e.touches[0].clientX - touchStartX;
+                const deltaY = e.touches[0].clientY - touchStartY;
+
+                cameraAngle.theta += deltaX * 0.01;
+                cameraAngle.phi += deltaY * 0.01;
+                cameraAngle.phi = Math.max(0.1, Math.min(Math.PI / 2, cameraAngle.phi));
+
+                updateCameraPosition();
+
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            });
+
+            // 창 크기 조정
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            updateWiper();
+            updateDisc();
+            updateCereals();
+
+            renderer.render(scene, camera);
+        }
+
+        // 초기화
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

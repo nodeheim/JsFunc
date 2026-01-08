@@ -1,46 +1,125 @@
-// FAQ 드롭다운 기능
-document.addEventListener('DOMContentLoaded', function() {
-    const faqQuestions = document.querySelectorAll('.faq-question');
+/**
+ * FAQ Accordion Component
+ * Manages the expand/collapse functionality of FAQ items with keyboard accessibility
+ */
 
-    faqQuestions.forEach(question => {
-        question.addEventListener('click', function() {
-            const faqItem = this.parentElement;
-            const answer = this.nextElementSibling;
-            const isActive = this.classList.contains('active');
+class FAQAccordion {
+    constructor(containerSelector = '.faq-container') {
+        this.container = document.querySelector(containerSelector);
+        this.faqQuestions = [];
+        this.init();
+    }
 
-            // 모든 FAQ 아이템 닫기
-            faqQuestions.forEach(q => {
-                q.classList.remove('active');
-                q.nextElementSibling.classList.remove('active');
-            });
+    init() {
+        if (!this.container) {
+            console.error('FAQ container not found');
+            return;
+        }
 
-            // 클릭한 아이템이 활성화되어 있지 않았다면 열기
-            if (!isActive) {
-                this.classList.add('active');
-                answer.classList.add('active');
-            }
+        this.faqQuestions = Array.from(this.container.querySelectorAll('.faq-question'));
+        this.attachEventListeners();
+    }
+
+    attachEventListeners() {
+        this.faqQuestions.forEach((question, index) => {
+            question.addEventListener('click', () => this.handleClick(question));
+            question.addEventListener('keydown', (e) => this.handleKeydown(e, question, index));
         });
-    });
+    }
 
-    // 키보드 접근성 추가
-    faqQuestions.forEach((question, index) => {
-        question.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                this.click();
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                const nextQuestion = faqQuestions[index + 1];
-                if (nextQuestion) {
-                    nextQuestion.focus();
-                }
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                const prevQuestion = faqQuestions[index - 1];
-                if (prevQuestion) {
-                    prevQuestion.focus();
-                }
-            }
+    handleClick(clickedQuestion) {
+        const answer = clickedQuestion.nextElementSibling;
+        const isCurrentlyActive = clickedQuestion.classList.contains('active');
+
+        // Close all FAQ items
+        this.closeAllFAQItems();
+
+        // Open the clicked item if it wasn't already active
+        if (!isCurrentlyActive) {
+            this.openFAQItem(clickedQuestion, answer);
+        }
+    }
+
+    handleKeydown(event, question, index) {
+        const { key } = event;
+
+        switch (key) {
+            case 'Enter':
+            case ' ':
+                event.preventDefault();
+                question.click();
+                break;
+
+            case 'ArrowDown':
+                event.preventDefault();
+                this.focusQuestion(index + 1);
+                break;
+
+            case 'ArrowUp':
+                event.preventDefault();
+                this.focusQuestion(index - 1);
+                break;
+
+            case 'Home':
+                event.preventDefault();
+                this.focusQuestion(0);
+                break;
+
+            case 'End':
+                event.preventDefault();
+                this.focusQuestion(this.faqQuestions.length - 1);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    focusQuestion(index) {
+        if (index >= 0 && index < this.faqQuestions.length) {
+            this.faqQuestions[index].focus();
+        }
+    }
+
+    openFAQItem(question, answer) {
+        question.classList.add('active');
+        question.setAttribute('aria-expanded', 'true');
+        answer.classList.add('active');
+    }
+
+    closeFAQItem(question, answer) {
+        question.classList.remove('active');
+        question.setAttribute('aria-expanded', 'false');
+        answer.classList.remove('active');
+    }
+
+    closeAllFAQItems() {
+        this.faqQuestions.forEach(question => {
+            const answer = question.nextElementSibling;
+            this.closeFAQItem(question, answer);
         });
-    });
+    }
+
+    // Public method to programmatically open a specific FAQ
+    openFAQByIndex(index) {
+        if (index >= 0 && index < this.faqQuestions.length) {
+            const question = this.faqQuestions[index];
+            const answer = question.nextElementSibling;
+            this.closeAllFAQItems();
+            this.openFAQItem(question, answer);
+        }
+    }
+
+    // Public method to close all FAQs
+    closeAll() {
+        this.closeAllFAQItems();
+    }
+}
+
+// Initialize FAQ Accordion when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    const faqAccordion = new FAQAccordion();
+
+    // Make accordion globally accessible for testing/debugging
+    window.faqAccordion = faqAccordion;
 });

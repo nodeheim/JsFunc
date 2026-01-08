@@ -1,16 +1,31 @@
 {
-  "name": "jsfunc",
+  "name": "faq-accordion",
   "version": "1.0.0",
-  "description": "",
+  "description": "Modern FAQ accordion component with accessibility features and smooth animations",
   "main": "script.js",
   "scripts": {
+    "start": "echo 'Open index.html in your browser to view the FAQ accordion'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "http://local_proxy@127.0.0.1:39441/git/nodeheim/JsFunc"
   },
-  "keywords": [],
+  "keywords": [
+    "faq",
+    "accordion",
+    "dropdown",
+    "javascript",
+    "accessibility",
+    "a11y",
+    "responsive",
+    "vanilla-js"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "browserslist": [
+    "last 2 versions",
+    "> 1%",
+    "not dead"
+  ]
 }

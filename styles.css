@@ -6,31 +6,116 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 40px 20px;
+    background: #f5f5f5;
     color: #333;
+    line-height: 1.6;
 }
 
 .container {
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
-header {
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-align: center;
+    padding: 100px 20px;
+}
+
+.hero-section h1 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+.hero-section p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+/* Services Section */
+.services-section {
+    padding: 80px 20px;
+    background: white;
+}
+
+.services-section h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 50px;
+    color: #333;
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.service-card {
+    padding: 30px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.service-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.service-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: #667eea;
+}
+
+.service-card p {
+    color: #666;
+}
+
+/* FAQ Section */
+.faq-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 80px 20px;
+}
+
+.faq-header {
     text-align: center;
     margin-bottom: 50px;
     color: white;
 }
 
-header h1 {
+.faq-header h2 {
     font-size: 2.5rem;
     font-weight: 700;
     margin-bottom: 10px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.subtitle {
+.faq-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* Contact Section */
+.contact-section {
+    background: #2c3e50;
+    color: white;
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.contact-section h2 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+}
+
+.contact-section p {
     font-size: 1.1rem;
     opacity: 0.9;
 }
@@ -39,6 +124,8 @@ header h1 {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 .faq-item {
@@ -110,11 +197,21 @@ header h1 {
 }
 
 @media (max-width: 768px) {
-    header h1 {
+    .hero-section h1 {
+        font-size: 2.5rem;
+    }
+
+    .hero-section p {
+        font-size: 1.1rem;
+    }
+
+    .services-section h2,
+    .faq-header h2,
+    .contact-section h2 {
         font-size: 2rem;
     }
 
-    .subtitle {
+    .faq-subtitle {
         font-size: 1rem;
     }
 
@@ -130,19 +227,41 @@ header h1 {
     .faq-answer p {
         font-size: 0.95rem;
     }
+
+    .services-section,
+    .faq-section,
+    .contact-section {
+        padding: 60px 20px;
+    }
 }
 
 @media (max-width: 480px) {
-    body {
-        padding: 20px 15px;
+    .hero-section {
+        padding: 80px 15px;
     }
 
-    header {
-        margin-bottom: 30px;
+    .hero-section h1 {
+        font-size: 2rem;
     }
 
-    header h1 {
+    .hero-section p {
+        font-size: 1rem;
+    }
+
+    .services-section h2,
+    .faq-header h2,
+    .contact-section h2 {
         font-size: 1.75rem;
+    }
+
+    .services-section,
+    .faq-section,
+    .contact-section {
+        padding: 40px 15px;
+    }
+
+    .faq-header {
+        margin-bottom: 30px;
     }
 
     .faq-container {
@@ -151,5 +270,9 @@ header h1 {
 
     .faq-item {
         border-radius: 10px;
+    }
+
+    .services-grid {
+        gap: 20px;
     }
 }

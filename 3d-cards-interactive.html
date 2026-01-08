@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Interactive Cards - 아임웹용</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            perspective: 1500px;
+        }
+
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .card {
+            position: absolute;
+            width: 300px;
+            height: 400px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+            pointer-events: none;
+        }
+
+        .card.active {
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1.1) !important;
+            z-index: 1000 !important;
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-content {
+            padding: 30px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .card.active .card-content {
+            opacity: 1;
+        }
+
+        .card-header {
+            text-align: center;
+        }
+
+        .card-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .card-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .card-description {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #555;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .card-button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: transform 0.3s;
+        }
+
+        .card-button:hover {
+            transform: scale(1.05);
+        }
+
+        /* Different card colors */
+        .card:nth-child(1) { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .card:nth-child(2) { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+        .card:nth-child(3) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; }
+        .card:nth-child(4) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; }
+        .card:nth-child(5) { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; }
+        .card:nth-child(6) { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white; }
+
+        .card:nth-child(1) .card-title,
+        .card:nth-child(2) .card-title,
+        .card:nth-child(3) .card-title,
+        .card:nth-child(4) .card-title,
+        .card:nth-child(5) .card-title,
+        .card:nth-child(6) .card-title,
+        .card:nth-child(1) .card-description,
+        .card:nth-child(2) .card-description,
+        .card:nth-child(3) .card-description,
+        .card:nth-child(4) .card-description,
+        .card:nth-child(5) .card-description,
+        .card:nth-child(6) .card-description,
+        .card:nth-child(1) .card-subtitle,
+        .card:nth-child(2) .card-subtitle,
+        .card:nth-child(3) .card-subtitle,
+        .card:nth-child(4) .card-subtitle,
+        .card:nth-child(5) .card-subtitle,
+        .card:nth-child(6) .card-subtitle {
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .reset-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 30px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+
+        .reset-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .title {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .subtitle {
+            position: fixed;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 18px;
+            text-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">3D Interactive Cards</div>
+    <div class="subtitle">클릭하여 카드를 확대해보세요!</div>
+
+    <div class="container" id="cardContainer">
+        <div class="card" data-card="1">
+            <div class="card-content">
+                <div class="card-header">
+                    <div class="card-icon">🚀</div>
+                    <h2 class="card-title">혁신</h2>
+                    <p class="card-subtitle">Innovation</p>
+                </div>
+                <div class="card-description">
+                    <p>새로운 아이디어와 창의적인 솔루션으로 비즈니스의 미래를 만들어갑니다. 끊임없는 도전과 혁신을 통해 시장을 선도합니다.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="#" class="card-button">자세히 보기</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" data-card="2">
+            <div class="card-content">
+                <div class="card-header">
+                    <div class="card-icon">💡</div>
+                    <h2 class="card-title">창의성</h2>
+                    <p class="card-subtitle">Creativity</p>
+                </div>
+                <div class="card-description">
+                    <p>독창적인 아이디어와 예술적 감각으로 브랜드의 가치를 높입니다. 창의적 사고로 차별화된 경험을 제공합니다.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="#" class="card-button">자세히 보기</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" data-card="3">
+            <div class="card-content">
+                <div class="card-header">
+                    <div class="card-icon">🎯</div>
+                    <h2 class="card-title">전략</h2>
+                    <p class="card-subtitle">Strategy</p>
+                </div>
+                <div class="card-description">
+                    <p>명확한 목표 설정과 체계적인 실행 계획으로 성공을 이끌어냅니다. 데이터 기반의 전략적 접근을 추구합니다.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="#" class="card-button">자세히 보기</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" data-card="4">
+            <div class="card-content">
+                <div class="card-header">
+                    <div class="card-icon">🌟</div>
+                    <h2 class="card-title">품질</h2>
+                    <p class="card-subtitle">Quality</p>
+                </div>
+                <div class="card-description">
+                    <p>최고 수준의 품질 관리와 디테일에 대한 집착으로 완벽함을 추구합니다. 고객 만족을 최우선으로 생각합니다.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="#" class="card-button">자세히 보기</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" data-card="5">
+            <div class="card-content">
+                <div class="card-header">
+                    <div class="card-icon">🤝</div>
+                    <h2 class="card-title">협업</h2>
+                    <p class="card-subtitle">Collaboration</p>
+                </div>
+                <div class="card-description">
+                    <p>팀워크와 소통을 중시하며 함께 성장하는 문화를 만들어갑니다. 다양한 관점의 융합으로 시너지를 창출합니다.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="#" class="card-button">자세히 보기</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" data-card="6">
+            <div class="card-content">
+                <div class="card-header">
+                    <div class="card-icon">⚡</div>
+                    <h2 class="card-title">속도</h2>
+                    <p class="card-subtitle">Speed</p>
+                </div>
+                <div class="card-description">
+                    <p>빠른 실행력과 민첩한 대응으로 시장의 변화를 선도합니다. 효율적인 프로세스로 최적의 결과를 달성합니다.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="#" class="card-button">자세히 보기</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="reset-button" onclick="resetCards()">초기화</button>
+
+    <script>
+        // 카드 위치 및 각도 설정
+        const cardPositions = [
+            { left: '15%', top: '20%', rotateX: -15, rotateY: 25, rotateZ: -10 },
+            { left: '70%', top: '15%', rotateX: 10, rotateY: -20, rotateZ: 8 },
+            { left: '25%', top: '60%', rotateX: -10, rotateY: 15, rotateZ: -12 },
+            { left: '65%', top: '65%', rotateX: 15, rotateY: -15, rotateZ: 10 },
+            { left: '45%', top: '25%', rotateX: -20, rotateY: 10, rotateZ: -5 },
+            { left: '40%', top: '70%', rotateX: 12, rotateY: -25, rotateZ: 15 }
+        ];
+
+        const cards = document.querySelectorAll('.card');
+        let activeCard = null;
+
+        // 초기 위치 설정
+        function initializeCards() {
+            cards.forEach((card, index) => {
+                const pos = cardPositions[index];
+                card.style.left = pos.left;
+                card.style.top = pos.top;
+                card.style.transform = `translate(-50%, -50%) rotateX(${pos.rotateX}deg) rotateY(${pos.rotateY}deg) rotateZ(${pos.rotateZ}deg) scale(0.9)`;
+                card.style.zIndex = index;
+            });
+        }
+
+        // 카드 클릭 이벤트
+        cards.forEach((card) => {
+            card.addEventListener('click', function(e) {
+                e.stopPropagation();
+
+                // 이미 활성화된 카드를 다시 클릭하면 초기화
+                if (this.classList.contains('active')) {
+                    resetCards();
+                    return;
+                }
+
+                // 모든 카드의 active 클래스 제거
+                cards.forEach(c => c.classList.remove('active'));
+
+                // 클릭한 카드 활성화
+                this.classList.add('active');
+                activeCard = this;
+
+                // 다른 카드들 약간 어둡게
+                cards.forEach(c => {
+                    if (c !== this) {
+                        c.style.opacity = '0.3';
+                        c.style.filter = 'blur(3px)';
+                    } else {
+                        c.style.opacity = '1';
+                        c.style.filter = 'blur(0)';
+                    }
+                });
+            });
+        });
+
+        // 카드 외부 클릭 시 초기화
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.card') && !e.target.closest('.reset-button')) {
+                resetCards();
+            }
+        });
+
+        // 카드 초기화 함수
+        function resetCards() {
+            cards.forEach((card, index) => {
+                card.classList.remove('active');
+                card.style.opacity = '1';
+                card.style.filter = 'blur(0)';
+
+                const pos = cardPositions[index];
+                card.style.left = pos.left;
+                card.style.top = pos.top;
+                card.style.transform = `translate(-50%, -50%) rotateX(${pos.rotateX}deg) rotateY(${pos.rotateY}deg) rotateZ(${pos.rotateZ}deg) scale(0.9)`;
+                card.style.zIndex = index;
+            });
+            activeCard = null;
+        }
+
+        // 마우스 움직임에 따른 3D 효과 (선택사항)
+        document.addEventListener('mousemove', function(e) {
+            if (activeCard) return; // 활성화된 카드가 있으면 효과 비활성화
+
+            const mouseX = e.clientX / window.innerWidth;
+            const mouseY = e.clientY / window.innerHeight;
+
+            cards.forEach((card, index) => {
+                if (!card.classList.contains('active')) {
+                    const pos = cardPositions[index];
+                    const moveX = (mouseX - 0.5) * 20;
+                    const moveY = (mouseY - 0.5) * 20;
+
+                    card.style.transform = `translate(-50%, -50%)
+                        rotateX(${pos.rotateX + moveY}deg)
+                        rotateY(${pos.rotateY + moveX}deg)
+                        rotateZ(${pos.rotateZ}deg)
+                        scale(0.9)`;
+                }
+            });
+        });
+
+        // 초기화
+        initializeCards();
+
+        // ESC 키로 초기화
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                resetCards();
+            }
+        });
+    </script>
+</body>
+</html>
